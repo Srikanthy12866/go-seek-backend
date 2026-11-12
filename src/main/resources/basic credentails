@@ -1,0 +1,11 @@
+CREATE DATABASE task_manager;
+
+CREATE USER 'taskapp'@'localhost'
+IDENTIFIED BY 'change-me-locally';
+
+GRANT ALL PRIVILEGES ON task_manager.*
+TO 'taskapp'@'localhost';
+
+FLUSH PRIVILEGES;
+
+EXIT;
