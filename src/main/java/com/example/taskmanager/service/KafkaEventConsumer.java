@@ -31,7 +31,8 @@ public class KafkaEventConsumer {
      */
     @KafkaListener(
             topics = "${app.kafka.topics.user-registered:user-registered-topic}",
-            groupId = "${spring.kafka.consumer.group-id:go-seek-backend-group}"
+            groupId = "${spring.kafka.consumer.group-id:go-seek-backend-group}",
+            autoStartup = "${app.kafka.enabled:false}"
     )
     public void handleUserRegistered(UserRegisteredEvent event) {
         log.info("Received Kafka [UserRegisteredEvent] for user: {} ({})", event.name(), event.email());
@@ -67,7 +68,8 @@ public class KafkaEventConsumer {
      */
     @KafkaListener(
             topics = "${app.kafka.topics.ticket-created:ticket-created-topic}",
-            groupId = "${spring.kafka.consumer.group-id:go-seek-backend-group}"
+            groupId = "${spring.kafka.consumer.group-id:go-seek-backend-group}",
+            autoStartup = "${app.kafka.enabled:false}"
     )
     public void handleTicketCreated(TicketCreatedEvent event) {
         log.info("Received Kafka [TicketCreatedEvent]: Code={}, App={}, Title={}",
