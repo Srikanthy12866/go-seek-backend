@@ -1,11 +1,17 @@
-CREATE DATABASE task_manager;
+# ==============================================================================
+# TIDB CLOUD FREE SERVERLESS CREDENTIALS (100% FREE, NO CREDIT CARD)
+# ==============================================================================
 
-CREATE USER 'taskapp'@'localhost'
-IDENTIFIED BY 'change-me-locally';
+Cluster: srikanth-db
+Host: gateway01.ap-northeast-1.prod.aws.tidbcloud.com
+Port: 4000
+Username: dkyd9BrrEMPi4wM.root
+Password: BbzWNAXRIX7kozmr
 
-GRANT ALL PRIVILEGES ON task_manager.*
-TO 'taskapp'@'localhost';
+Databases:
+1. auth_db (User authentication & JWT)
+2. app_db  (Tickets, Contact messages, Tasks)
 
-FLUSH PRIVILEGES;
-
-EXIT;
+Connection URLs:
+auth_db: jdbc:mysql://gateway01.ap-northeast-1.prod.aws.tidbcloud.com:4000/auth_db?sslMode=VERIFY_IDENTITY
+app_db:  jdbc:mysql://gateway01.ap-northeast-1.prod.aws.tidbcloud.com:4000/app_db?sslMode=VERIFY_IDENTITY
