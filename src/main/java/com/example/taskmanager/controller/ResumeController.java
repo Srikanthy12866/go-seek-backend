@@ -49,6 +49,7 @@ public class ResumeController {
                     "source", resumeFile.source(),
                     "sizeBytes", resumeFile.size(),
                     "lastModified", resumeFile.lastModified(),
+                    "gdriveFolderId", resumeService.getGdriveFolderId(),
                     "folderLocation", resumeService.getConfiguredFolderPath(),
                     "downloadUrl", "/api/resume/download",
                     "secured", true
@@ -57,6 +58,7 @@ public class ResumeController {
             return Map.of(
                     "status", "UNAVAILABLE",
                     "error", ex.getMessage(),
+                    "gdriveFolderId", resumeService.getGdriveFolderId(),
                     "folderLocation", resumeService.getConfiguredFolderPath(),
                     "secured", true
             );
