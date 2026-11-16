@@ -31,6 +31,8 @@ public class ResumeService {
             long size
     ) {}
 
+    private record GDriveEntry(String id, String href, String title) {}
+
     // Google Drive Folder ID provided by user: https://drive.google.com/drive/folders/14_DQNf3XbcSpzc-UD_H8fHoIClZeQkNq
     @Value("${app.resume.gdrive-folder-id:14_DQNf3XbcSpzc-UD_H8fHoIClZeQkNq}")
     private String gdriveFolderId;
@@ -208,6 +210,45 @@ public class ResumeService {
             HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
             if (res.statusCode() == 200) {
                 String html = res.body();
+
+                // Parse entries from embedded folder view
+                Pattern entryPattern = Pattern.compile("<div class=\"flip-entry\" id=\"entry-([^\"]+)\"[\\s\\S]*?<a href=\"([^\"]+)\"[\\s\\S]*?<div class=\"flip-entry-title\">([^<]+)</div>");
+                Matcher entryMatcher = entryPattern.matcher(html);
+                List<GDriveEntry> entries = new ArrayList<>();
+                while (entryMatcher.find()) {
+                    entries.add(new GDriveEntry(
+                            entryMatcher.group(1).trim(),
+                            entryMatcher.group(2).trim(),
+                            entryMatcher.group(3).trim()
+                    ));
+                }
+
+                if (!entries.isEmpty()) {
+                    log.info("Discovered {} file(s) in Google Drive folder {}: {}",
+                            entries.size(), folderId, entries.stream().map(GDriveEntry::title).collect(Collectors.joining(", ")));
+
+                    // Prioritize PDF files
+                    List<GDriveEntry> pdfs = entries.stream()
+                            .filter(e -> e.title().toLowerCase().endsWith(".pdf"))
+                            .toList();
+
+                    GDriveEntry chosen = !pdfs.isEmpty() ? pdfs.get(0) : entries.get(0);
+
+                    String downloadUrl;
+                    if (chosen.href().contains("/document/d/")) {
+                        downloadUrl = "https://docs.google.com/document/d/" + chosen.id() + "/export?format=pdf";
+                    } else {
+                        downloadUrl = "https://drive.google.com/uc?export=download&id=" + chosen.id();
+                    }
+
+                    log.info("Capturing resume: {} ({})", chosen.title(), downloadUrl);
+                    ResumeFile file = downloadFileFromUrl(downloadUrl, chosen.title(), "gdrive-folder:" + folderId);
+                    if (file != null) {
+                        return file;
+                    }
+                }
+
+                // Fallback ID regex scanner
                 Pattern filePattern = Pattern.compile("(?:file\\/d\\/|data-id=[\"'])([a-zA-Z0-9_-]{25,50})");
                 Matcher m = filePattern.matcher(html);
                 Set<String> candidateFileIds = new LinkedHashSet<>();
@@ -215,19 +256,15 @@ public class ResumeService {
                     candidateFileIds.add(m.group(1));
                 }
 
-                if (!candidateFileIds.isEmpty()) {
-                    log.info("Found {} candidate file(s) in Google Drive folder {}", candidateFileIds.size(), folderId);
-                    for (String fileId : candidateFileIds) {
-                        String downloadUrl = "https://drive.google.com/uc?export=download&id=" + fileId;
-                        ResumeFile file = downloadFileFromUrl(downloadUrl, "Yepalagunta_Srikanth_Resume.pdf", "gdrive-folder:" + folderId);
-                        if (file != null) {
-                            return file;
-                        }
+                for (String fileId : candidateFileIds) {
+                    String downloadUrl = "https://drive.google.com/uc?export=download&id=" + fileId;
+                    ResumeFile file = downloadFileFromUrl(downloadUrl, "Yepalagunta_Srikanth_Resume.pdf", "gdrive-folder:" + folderId);
+                    if (file != null) {
+                        return file;
                     }
                 }
-            } else if (res.statusCode() == 401 || res.statusCode() == 302 || res.statusCode() == 403) {
-                log.warn("Google Drive folder {} returned HTTP {}. Ensure General Access is set to 'Anyone with the link can view' for automatic folder auto-capture.",
-                        folderId, res.statusCode());
+            } else {
+                log.warn("Google Drive folder {} returned HTTP {}.", folderId, res.statusCode());
             }
         } catch (Exception ex) {
             log.warn("Error parsing Google Drive folder: {}", ex.getMessage());
