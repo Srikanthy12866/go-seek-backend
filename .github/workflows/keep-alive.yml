@@ -1,0 +1,23 @@
+name: Render Cloud Keep-Alive
+
+on:
+  schedule:
+    # Pings every 14 minutes to prevent Render free-tier containers from spinning down
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions dashboard
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping go-seek-backend
+        run: |
+          echo "Pinging go-seek-backend..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 45 "https://go-seek-backend.onrender.com/api/health" || echo "failed")
+          echo "go-seek-backend responded with HTTP $STATUS"
+
+      - name: Ping auth-service
+        run: |
+          echo "Pinging auth-service..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 45 "https://auth-service-v3f4.onrender.com/api/health" || echo "failed")
+          echo "auth-service responded with HTTP $STATUS"
