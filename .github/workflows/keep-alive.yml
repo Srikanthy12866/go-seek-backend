@@ -2,8 +2,8 @@ name: Render Cloud Keep-Alive
 
 on:
   schedule:
-    # Pings every 14 minutes to prevent Render free-tier containers from spinning down
-    - cron: '*/14 * * * *'
+    # Pings every 10 minutes to prevent Render free-tier containers from spinning down (15 min idle limit)
+    - cron: '*/10 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub Actions dashboard
 
 jobs:
