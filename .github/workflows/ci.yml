@@ -1,0 +1,31 @@
+name: Go-Seek Backend CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'maven'
+
+    - name: Compile and Verify Dependencies
+      run: |
+        if [ -f "./mvnw" ]; then
+          chmod +x ./mvnw
+          ./mvnw clean compile -DskipTests
+        else
+          mvn clean compile -DskipTests
+        fi
