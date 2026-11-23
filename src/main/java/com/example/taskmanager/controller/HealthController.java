@@ -1,5 +1,6 @@
 package com.example.taskmanager.controller;
 
+import com.example.taskmanager.service.EmailService;
 import com.example.taskmanager.service.InterServiceHealthCheckService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,9 +17,13 @@ public class HealthController {
     private String notifyEmail;
 
     private final InterServiceHealthCheckService healthCheckService;
+    private final EmailService emailService;
 
-    public HealthController(InterServiceHealthCheckService healthCheckService) {
+    public HealthController(
+            InterServiceHealthCheckService healthCheckService,
+            EmailService emailService) {
         this.healthCheckService = healthCheckService;
+        this.emailService = emailService;
     }
 
     @GetMapping("/health")
@@ -29,6 +34,8 @@ public class HealthController {
                 "port", 8082,
                 "database", "app_db",
                 "notificationTarget", notifyEmail,
+                "smtpConfigured", emailService.isSmtpConfigured(),
+                "smtpSender", emailService.getFromEmail(),
                 "peerHealth", Map.of(
                         "target", "auth-service",
                         "status", healthCheckService.getPeerStatus(),

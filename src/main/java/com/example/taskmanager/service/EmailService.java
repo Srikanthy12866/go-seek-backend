@@ -18,14 +18,29 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final String recipientEmail;
     private final String fromEmail;
+    private final String mailPassword;
 
     public EmailService(
             @Autowired(required = false) JavaMailSender mailSender,
             @Value("${app.notification.recipient-email:srikanthy12866@gmail.com}") String recipientEmail,
-            @Value("${spring.mail.username:srikanthy12866@gmail.com}") String fromEmail) {
+            @Value("${spring.mail.username:srikanthy12866@gmail.com}") String fromEmail,
+            @Value("${spring.mail.password:}") String mailPassword) {
         this.mailSender = mailSender;
         this.recipientEmail = recipientEmail;
         this.fromEmail = fromEmail;
+        this.mailPassword = mailPassword != null ? mailPassword.trim() : "";
+    }
+
+    public boolean isSmtpConfigured() {
+        return mailSender != null && !mailPassword.isBlank();
+    }
+
+    public String getRecipientEmail() {
+        return recipientEmail;
+    }
+
+    public String getFromEmail() {
+        return fromEmail;
     }
 
     @Async
@@ -97,8 +112,10 @@ public class EmailService {
     private void deliverEmail(String subject, String content, String replyTo) {
         log.info("Preparing to send email to [{}]: {}", recipientEmail, subject);
 
-        if (mailSender == null) {
-            log.warn("JavaMailSender is not configured. Email logged to console instead of SMTP delivery.");
+        if (mailSender == null || mailPassword.isBlank()) {
+            log.warn("[SMTP Notification Pending] MAIL_PASSWORD is not set or JavaMailSender is missing. " +
+                    "To deliver emails to {}, please configure a 16-character Google App Password in the MAIL_PASSWORD environment variable for account {}. " +
+                    "Logging notification payload locally instead:", recipientEmail, fromEmail);
             log.info("Email Payload:\nSubject: {}\n{}", subject, content);
             return;
         }
