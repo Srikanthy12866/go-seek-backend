@@ -36,6 +36,11 @@ public class TicketController {
         return ticketService.getTicketsForUser(email, source, isAdmin);
     }
 
+    @GetMapping("/track/{code}")
+    public TicketResponse trackTicket(@PathVariable String code) {
+        return ticketService.getByCodePublic(code);
+    }
+
     @GetMapping("/{code}")
     public TicketResponse getTicket(
             @PathVariable String code,

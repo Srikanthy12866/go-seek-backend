@@ -104,6 +104,13 @@ public class TicketService {
         return TicketResponse.from(ticket);
     }
 
+    @Transactional(readOnly = true)
+    public TicketResponse getByCodePublic(String code) {
+        Ticket ticket = ticketRepository.findByTicketCode(code.trim())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found with code: " + code));
+        return TicketResponse.from(ticket);
+    }
+
     @Transactional
     public TicketResponse updateStatus(Long id, String status, String callerEmail, boolean isAdmin) {
         Ticket ticket = ticketRepository.findById(id)
