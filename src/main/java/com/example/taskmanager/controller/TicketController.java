@@ -41,6 +41,14 @@ public class TicketController {
         return ticketService.getByCodePublic(code);
     }
 
+    @GetMapping("/my")
+    public List<TicketResponse> getMyTickets(@RequestParam(required = false) String email) {
+        if (email == null || email.isBlank()) {
+            return List.of();
+        }
+        return ticketService.getTicketsByEmailPublic(email);
+    }
+
     @GetMapping("/{code}")
     public TicketResponse getTicket(
             @PathVariable String code,

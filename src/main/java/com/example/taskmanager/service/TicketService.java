@@ -111,6 +111,12 @@ public class TicketService {
         return TicketResponse.from(ticket);
     }
 
+    @Transactional(readOnly = true)
+    public List<TicketResponse> getTicketsByEmailPublic(String email) {
+        return ticketRepository.findByUserEmailOrderByCreatedAtDesc(email.trim().toLowerCase())
+                .stream().map(TicketResponse::from).toList();
+    }
+
     @Transactional
     public TicketResponse updateStatus(Long id, String status, String callerEmail, boolean isAdmin) {
         Ticket ticket = ticketRepository.findById(id)

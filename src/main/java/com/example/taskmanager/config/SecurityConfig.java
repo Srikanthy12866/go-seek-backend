@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/contact").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/tickets").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tickets/track/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tickets/my").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/contact").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/resume/upload").authenticated()
                         .requestMatchers("/api/tickets/**").authenticated()
