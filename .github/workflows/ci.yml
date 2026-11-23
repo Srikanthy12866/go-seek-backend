@@ -21,11 +21,11 @@ jobs:
         distribution: 'temurin'
         cache: 'maven'
 
-    - name: Compile and Verify Dependencies
+    - name: Compile and Run Tests
       run: |
         if [ -f "./mvnw" ]; then
           chmod +x ./mvnw
-          ./mvnw clean compile -DskipTests
+          ./mvnw clean test
         else
-          mvn clean compile -DskipTests
+          mvn clean test
         fi
