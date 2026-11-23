@@ -5,6 +5,7 @@ import com.example.taskmanager.dto.TicketResponse;
 import com.example.taskmanager.service.TicketService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,18 +28,33 @@ public class TicketController {
 
     @GetMapping
     public List<TicketResponse> listTickets(
-            @RequestParam(required = false) String source) {
-        return ticketService.getAllTickets(source);
+            @RequestParam(required = false) String source,
+            Authentication authentication) {
+        String email = authentication != null ? authentication.getName() : null;
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        return ticketService.getTicketsForUser(email, source, isAdmin);
     }
 
     @GetMapping("/{code}")
-    public TicketResponse getTicket(@PathVariable String code) {
-        return ticketService.getByCode(code);
+    public TicketResponse getTicket(
+            @PathVariable String code,
+            Authentication authentication) {
+        String email = authentication != null ? authentication.getName() : null;
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        return ticketService.getByCode(code, email, isAdmin);
     }
 
     @PatchMapping("/{id}/status")
-    public TicketResponse updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public TicketResponse updateStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
         String status = body.getOrDefault("status", "OPEN");
-        return ticketService.updateStatus(id, status);
+        String email = authentication != null ? authentication.getName() : null;
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        return ticketService.updateStatus(id, status, email, isAdmin);
     }
 }

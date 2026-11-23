@@ -36,8 +36,10 @@ public class TicketService {
         ticket.setDescription(request.description().trim());
         ticket.setUserEmail(request.userEmail().trim().toLowerCase());
         ticket.setUserName(request.userName() != null ? request.userName().trim() : "Anonymous");
-        ticket.setPriority(request.priority() != null && !request.priority().isBlank()
-                ? request.priority().trim().toUpperCase() : "MEDIUM");
+        String rawPriority = request.priority();
+        String priority = (rawPriority != null && List.of("LOW", "MEDIUM", "HIGH", "CRITICAL").contains(rawPriority.trim().toUpperCase()))
+                ? rawPriority.trim().toUpperCase() : "MEDIUM";
+        ticket.setPriority(priority);
         ticket.setStatus("OPEN");
         ticket.setSystemInfo(request.systemInfo());
 
@@ -57,7 +59,7 @@ public class TicketService {
             // Non-blocking
         }
 
-        // 2. Dispatch email notification to srikanthy12866@gmail.com
+        // 2. Dispatch email notification to configured recipient
         try {
             emailService.sendTicketNotification(saved);
         } catch (Exception e) {
@@ -68,28 +70,56 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public List<TicketResponse> getAllTickets(String source) {
+    public List<TicketResponse> getTicketsForUser(String userEmail, String source, boolean isAdmin) {
+        if (userEmail == null && !isAdmin) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required to view tickets");
+        }
+
         List<Ticket> list;
-        if (source != null && !source.isBlank()) {
-            list = ticketRepository.findByAppSourceOrderByCreatedAtDesc(source.trim());
+        if (isAdmin) {
+            if (source != null && !source.isBlank()) {
+                list = ticketRepository.findByAppSourceOrderByCreatedAtDesc(source.trim());
+            } else {
+                list = ticketRepository.findAllByOrderByCreatedAtDesc();
+            }
         } else {
-            list = ticketRepository.findAllByOrderByCreatedAtDesc();
+            // Tenant isolation: Users can only see tickets associated with their authenticated email
+            list = ticketRepository.findByUserEmailOrderByCreatedAtDesc(userEmail.toLowerCase());
+            if (source != null && !source.isBlank()) {
+                list = list.stream().filter(t -> source.equalsIgnoreCase(t.getAppSource())).toList();
+            }
         }
         return list.stream().map(TicketResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public TicketResponse getByCode(String code) {
-        return ticketRepository.findByTicketCode(code)
-                .map(TicketResponse::from)
+    public TicketResponse getByCode(String code, String callerEmail, boolean isAdmin) {
+        Ticket ticket = ticketRepository.findByTicketCode(code)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        if (!isAdmin && (callerEmail == null || !callerEmail.equalsIgnoreCase(ticket.getUserEmail()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You do not own this ticket");
+        }
+
+        return TicketResponse.from(ticket);
     }
 
     @Transactional
-    public TicketResponse updateStatus(Long id, String status) {
+    public TicketResponse updateStatus(Long id, String status, String callerEmail, boolean isAdmin) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
-        ticket.setStatus(status.toUpperCase());
+
+        // Broken Object-Level Authorization (BOLA) Defense
+        if (!isAdmin && (callerEmail == null || !callerEmail.equalsIgnoreCase(ticket.getUserEmail()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: Unauthorized to update this ticket");
+        }
+
+        String normalizedStatus = status != null ? status.trim().toUpperCase() : "OPEN";
+        if (!List.of("OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED").contains(normalizedStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status. Allowed values: OPEN, IN_PROGRESS, RESOLVED, CLOSED");
+        }
+
+        ticket.setStatus(normalizedStatus);
         return TicketResponse.from(ticketRepository.save(ticket));
     }
 }

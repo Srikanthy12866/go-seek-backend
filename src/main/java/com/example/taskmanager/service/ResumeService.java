@@ -273,7 +273,33 @@ public class ResumeService {
         return null;
     }
 
+    private boolean isSafeRemoteUrl(String url) {
+        try {
+            URI uri = URI.create(url);
+            if (!"https".equalsIgnoreCase(uri.getScheme())) {
+                return false;
+            }
+            String host = uri.getHost();
+            if (host == null || host.isBlank() || host.equalsIgnoreCase("localhost") || host.equals("127.0.0.1") || host.equals("169.254.169.254")) {
+                return false;
+            }
+            java.net.InetAddress[] addresses = java.net.InetAddress.getAllByName(host);
+            for (java.net.InetAddress addr : addresses) {
+                if (addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress() || addr.isAnyLocalAddress()) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private ResumeFile downloadFileFromUrl(String url, String fallbackFilename, String source) {
+        if (!isSafeRemoteUrl(url)) {
+            log.warn("Blocked potentially unsafe / SSRF remote URL request: {}", url);
+            return null;
+        }
         try {
             HttpClient client = createHttpClient();
             HttpRequest req = HttpRequest.newBuilder()

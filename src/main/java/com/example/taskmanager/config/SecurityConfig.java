@@ -1,6 +1,7 @@
 package com.example.taskmanager.config;
 
 import com.example.taskmanager.security.JwtAuthenticationFilter;
+import com.example.taskmanager.security.RateLimitingFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,42 +26,54 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            JwtAuthenticationFilter jwtFilter) throws Exception {
+            JwtAuthenticationFilter jwtFilter,
+            RateLimitingFilter rateLimitingFilter) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'"))
+                        .frameOptions(frame -> frame.deny())
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/api/health",
-                                "/api/contact/**",
-                                "/api/tickets/**",
-                                "/api/resume/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
-                                "/error"
+                                "/error",
+                                "/api/resume/download",
+                                "/api/resume/info"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/contact").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/tickets").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/contact").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/resume/upload").authenticated()
+                        .requestMatchers("/api/tickets/**").authenticated()
                         .anyRequest().authenticated())
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
     @Bean
     CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}") String allowedOrigins) {
+            @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173,https://srikanthy12866.github.io}") String allowedOrigins) {
         CorsConfiguration configuration = new CorsConfiguration();
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim).filter(s -> !s.isBlank()).toList();
-        if (origins.contains("*")) {
-            configuration.addAllowedOriginPattern("*");
+                .map(String::trim).filter(s -> !s.isBlank() && !s.equals("*")).toList();
+        if (origins.isEmpty()) {
+            configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173", "https://srikanthy12866.github.io"));
         } else {
             configuration.setAllowedOrigins(origins);
         }
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With", "X-Internal-Service-Key", "X-Webhook-Signature"));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
         configuration.setAllowCredentials(false);
 

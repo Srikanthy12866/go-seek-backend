@@ -6,6 +6,7 @@ import com.example.taskmanager.entity.ContactMessage;
 import com.example.taskmanager.service.ContactService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +27,7 @@ public class ContactController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public List<ContactMessage> listMessages() {
         return contactService.getAllMessages();
     }
